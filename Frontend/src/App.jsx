@@ -40,15 +40,19 @@ import AdminReviews from './pages/admin/AdminReviews';
 import AdminSettings from './pages/admin/AdminSettings';
 
 // --- Axios Global Configuration ---
+// The correct URL is injected here by Vercel/Vite environment variable (VITE_API_URL).
 axios.defaults.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 axios.defaults.withCredentials = true;
 
 // Request interceptor to add the authorization token to headers
 axios.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    // Only attempt to get token if running in a browser
+    if (typeof window !== 'undefined') { 
+        const token = localStorage.getItem('token');
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
     }
     return config;
   },
@@ -71,7 +75,8 @@ axios.interceptors.response.use(
           throw new Error("No refresh token available.");
         }
         
-        const { data } = await axios.post('/api/auth/refresh', { refreshToken });
+        // This refresh call itself uses the global axios instance, so we don't need the window check here.
+        const { data } = await axios.post('/api/auth/refresh', { refreshToken }); 
         
         localStorage.setItem('token', data.accessToken);
         
@@ -87,7 +92,8 @@ axios.interceptors.response.use(
         localStorage.removeItem('userInfo');
         
         // Only redirect to login if not already on login/register page
-        if (!window.location.pathname.includes('/login') && 
+        if (typeof window !== 'undefined' && 
+            !window.location.pathname.includes('/login') && 
             !window.location.pathname.includes('/register')) {
           window.location.href = '/login';
         }
@@ -115,6 +121,14 @@ function App() {
   const { isAuthenticated } = useSelector((state) => state.auth);
 
   useEffect(() => {
+    // ----------------------------------------------------------------------
+    // 🛑 THE CRITICAL FIX: Skip this logic if the app is NOT running in a browser environment
+    // The 'window' object is undefined during Vercel's server-side build process.
+    if (typeof window === 'undefined') {
+        return; 
+    }
+    // ----------------------------------------------------------------------
+    
     // Load user data when authenticated
     if (isAuthenticated) {
       // Fetch wishlist and cart silently (don't block UI on errors)
@@ -131,7 +145,6 @@ function App() {
   return (
     <Router>
       <ScrollToTop />
-      {/* --- THIS IS THE FIX --- */}
       <Toaster 
         position="top-right"
         toastOptions={{
@@ -139,7 +152,7 @@ function App() {
           style: {
             background: '#363636',
             color: '#fff',
-            zIndex: 9999, // Added this line
+            zIndex: 9999,
           },
           success: {
             duration: 3000,
@@ -157,7 +170,6 @@ function App() {
           },
         }}
       />
-      {/* --- END OF FIX --- */}
       
       <Routes>
         {/* Public Routes with Header/Footer */}
@@ -179,7 +191,7 @@ function App() {
           </ProtectedRoute>
         } />
         
-        {/* ✅ UPDATED: Orders Routes - List & Details */}
+        {/* Orders Routes - List & Details */}
         <Route path="/orders" element={
           <ProtectedRoute>
             <PageLayout><Orders /></PageLayout>
@@ -210,10 +222,8 @@ function App() {
           <Route path="products" element={<AdminProducts />} />
           <Route path="products/add" element={<AddProduct />} />
           
-          {/* --- START OF FIX --- */}
           {/* This new route handles editing a product by its ID */}
           <Route path="products/edit/:id" element={<AddProduct />} />
-          {/* --- END OF FIX --- */}
 
           <Route path="orders" element={<AdminOrders />} />
           <Route path="users" element={<AdminUsers />} />
