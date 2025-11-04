@@ -13,12 +13,24 @@ connectDB();
 
 const app = express();
 
-// CORS configuration
+// --- START OF CORS FIX ---
+// Define all allowed origins (URLs where the frontend is hosted)
+const primaryOrigin = process.env.FRONTEND_URL || 'http://localhost:5173';
+
+const allowedOrigins = [
+  primaryOrigin, // This should resolve to https://catchmydeal.in (from Render ENV)
+  'http://localhost:5173', // Local development fallback
+  'https://catchmydeal.vercel.app', // Explicitly allow the Vercel app URL
+  'https://www.catchmydeal.in' // Explicitly allow the www version
+];
+
+// CORS configuration - allowing the list of origins
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: allowedOrigins,
   credentials: true,
   optionsSuccessStatus: 200
 };
+// --- END OF CORS FIX ---
 
 // Middleware
 app.use(cors(corsOptions));
