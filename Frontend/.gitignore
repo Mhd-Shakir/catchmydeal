@@ -1,0 +1,4 @@
+# Node/Vite/React files
+/node_modules
+/dist
+.env
